@@ -3,7 +3,7 @@
 import abc
 import math
 from heapq import heapify, heappop, heappush
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
 
 class Node:
@@ -55,9 +55,11 @@ class Graph:
 
         if source not in self.edges:
             self.edges[source] = {}
+            self.edges[source][source] = 0.0
 
         if dest not in self.edges:
             self.edges[dest] = {}
+            self.edges[dest][dest] = 0.0
 
         self.edges[source][dest] = weight
 
@@ -160,10 +162,90 @@ class GBFS(PathFinderInterface):
                 break
 
             for neighbor in self.graph.edges[current_node]:
+                tentative_distance = self.heuristics[neighbor]
+                if neighbor not in visited:
+                    heappush(pq, (tentative_distance, neighbor))
+                    predecessors[neighbor] = current_node
+
+        path: List[Node] = []
+        current_node = predecessors[destination]
+
+        while current_node and current_node != origin:
+            path.append(current_node)
+            current_node = predecessors[current_node]
+
+        path.reverse()
+
+        if self.include_origin:
+            path.insert(0, origin)
+
+        if self.include_destination:
+            path.append(destination)
+
+        return path
+
+    def __calculate_heuristics(self, destination: Node) -> None:
+        for node in self.graph.nodes:
+            euclidean_distance = math.sqrt(
+                (node.x - destination.x) ** 2 + (node.y - destination.y) ** 2
+            )
+            self.heuristics[node] = euclidean_distance
+
+
+class AStar(PathFinderInterface):
+    def __init__(
+        self,
+        graph: Graph,
+        heuristics: dict[Node, float] | None = None,
+        include_origin: bool = False,
+        include_destination: bool = False,
+    ):
+        self.graph = graph
+        if heuristics is None:
+            heuristics = {}
+
+        self.heuristics = heuristics
+        self.include_origin = include_origin
+        self.include_destination = include_destination
+
+    def shortest_path(self, origin: Node, destination: Node) -> List[Node]:
+        assert origin in self.graph.nodes
+        assert destination in self.graph.nodes
+
+        # Just to make sure that the dude have the right coordinates from the calculate heuristics
+        origin = self.graph.nodes[origin]
+        destination = self.graph.nodes[destination]
+        predecessors: dict[Node, Node | None] = {
+            node: None for node in self.graph.nodes
+        }
+
+        if not self.heuristics:
+            self.__calculate_heuristics(destination)
+
+        pq = [(0 + self.heuristics[origin], origin)]
+        heapify(pq)
+
+        visited = set()
+
+        while pq:
+            current_distance, current_node = heappop(pq)
+
+            if current_node in visited:
+                continue
+
+            visited.add(current_node)
+
+            if current_node == destination:
+                break
+
+            for neighbor, weight in self.graph.edges[current_node].items():
+                tentative_distance = (
+                    current_distance + weight + self.heuristics[neighbor]
+                )
                 if neighbor in visited:
                     continue
 
-                heappush(pq, (self.heuristics[neighbor], neighbor))
+                heappush(pq, (tentative_distance, neighbor))
                 predecessors[neighbor] = current_node
 
         path: List[Node] = []
@@ -253,9 +335,111 @@ def second_question():
     )
 
 
+def third_question():
+    print("Third question")
+
+    g = Graph()
+
+    arad = Node("Arad")
+    bucharest = Node("Bucharest")
+    craiova = Node("Craiova")
+    dobreta = Node("Dobreta")
+    eforie = Node("Eforie")
+    fagaras = Node("Fagaras")
+    giurgiu = Node("Giurgiu")
+    hirsova = Node("Hirsova")
+    iasi = Node("Iasi")
+    lugoj = Node("Lugoj")
+    mehadia = Node("Mehadia")
+    neamt = Node("Neamt")
+    oradea = Node("Oradea")
+    pitesti = Node("Pitesti")
+    rimnicu_vilcea = Node("Rimnicu Vilcea")
+    sibiu = Node("Sibiu")
+    timisoara = Node("Timisoara")
+    urziceni = Node("Urziceni")
+    vaslui = Node("Vaslui")
+    zerind = Node("Zerind")
+
+    g.add_edge((arad, zerind, 75.0))
+    g.add_edge((zerind, oradea, 71.0))
+    g.add_edge((oradea, sibiu, 151.0))
+    g.add_edge((sibiu, arad, 140.0))
+    g.add_edge((arad, timisoara, 118.0))
+    g.add_edge((timisoara, lugoj, 111.0))
+    g.add_edge((lugoj, mehadia, 70.0))
+    g.add_edge((mehadia, dobreta, 75.0))
+    g.add_edge((dobreta, craiova, 120.0))
+    g.add_edge((craiova, rimnicu_vilcea, 146.0))
+    g.add_edge((rimnicu_vilcea, sibiu, 80.0))
+    g.add_edge((sibiu, fagaras, 99.0))
+    g.add_edge((fagaras, bucharest, 211.0))
+    g.add_edge((bucharest, pitesti, 101.0))
+    g.add_edge((pitesti, rimnicu_vilcea, 97.0))
+    g.add_edge((craiova, pitesti, 138.0))
+    g.add_edge((pitesti, bucharest, 101.0))
+    g.add_edge((bucharest, giurgiu, 90.0))
+    g.add_edge((bucharest, urziceni, 85.0))
+    g.add_edge((urziceni, hirsova, 98.0))
+    g.add_edge((hirsova, eforie, 86.0))
+    g.add_edge((urziceni, vaslui, 142.0))
+    g.add_edge((vaslui, iasi, 92.0))
+    g.add_edge((iasi, neamt, 87.0))
+
+    heuristics = {
+        arad: 366.0,
+        bucharest: 0,
+        craiova: 160,
+        dobreta: 242,
+        eforie: 161,
+        fagaras: 176,
+        giurgiu: 77,
+        hirsova: 151,
+        iasi: 226,
+        lugoj: 244,
+        mehadia: 241,
+        neamt: 234,
+        oradea: 380,
+        pitesti: 100,
+        rimnicu_vilcea: 193,
+        sibiu: 253,
+        timisoara: 329,
+        urziceni: 80,
+        vaslui: 199,
+        zerind: 374,
+    }
+
+    print("Greedy Best First Search")
+
+    gbfs = GBFS(
+        graph=g,
+        heuristics=heuristics,
+        include_origin=True,
+        include_destination=True,
+    )
+
+    path = gbfs.shortest_path(Node("arad"), Node("bucharest"))
+
+    print(f"Shortest path from Arad to Bucharest using GBFS is {path}")
+
+    print("A* Search")
+
+    astar = AStar(
+        graph=g,
+        heuristics=heuristics,
+        include_origin=True,
+        include_destination=True,
+    )
+
+    path = astar.shortest_path(Node("arad"), Node("bucharest"))
+
+    print(f"Shortest path from Arad to Bucharest using A* is {path}")
+
+
 def main():
     first_question()
     second_question()
+    third_question()
 
 
 if __name__ == "__main__":
